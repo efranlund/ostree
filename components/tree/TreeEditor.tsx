@@ -23,10 +23,8 @@ import ExperimentNode from './nodes/ExperimentNode';
 import { supabase } from '@/lib/supabase/client';
 import { createChildNode, createOutcome } from '@/lib/utils/nodeOperations';
 import { useRouter } from 'next/navigation';
-import ActivityFeed from './ActivityFeed';
 import PresenceIndicator from './PresenceIndicator';
 import ExportMenu from './ExportMenu';
-import CursorPresence from './CursorPresence';
 import { Target } from 'lucide-react';
 
 interface TreeEditorProps {
@@ -449,7 +447,6 @@ export default function TreeEditor({
       </div>
       <div className="flex-1 relative">
         <PresenceIndicator treeId={tree.id} />
-        <ActivityFeed treeId={tree.id} />
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -474,7 +471,6 @@ export default function TreeEditor({
               return '#8b5cf6';
             }}
           />
-          <CursorPresence treeId={tree.id} />
         </ReactFlow>
       </div>
     </div>
