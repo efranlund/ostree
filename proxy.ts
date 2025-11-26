@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Timeout wrapper to prevent middleware from hanging
+// Timeout wrapper to prevent proxy from hanging
 async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number
@@ -12,7 +12,7 @@ async function withTimeout<T>(
   return Promise.race([promise, timeout]);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Validate environment variables
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     console.error('Missing Supabase environment variables');
@@ -65,7 +65,7 @@ export async function middleware(request: NextRequest) {
       return response;
     }
   } catch (error) {
-    console.error('Error in middleware auth check:', error);
+    console.error('Error in proxy auth check:', error);
     // Allow request to proceed without auth check on error
     return response;
   }
@@ -85,7 +85,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Only run middleware on specific routes
+    // Only run proxy on specific routes
     '/',
     '/trees/:path*',
     '/login',
