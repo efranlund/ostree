@@ -72,24 +72,52 @@ export async function createChildNode(
       if (error) throw error;
       return { id: data.id, type: 'solution' as const, data };
     } else if (parentType === 'solution') {
+      // When clicking "+" on a solution, create a sub-solution (not an experiment)
+      // Users can still create experiments through other means if needed
       const { data, error } = await supabase
-        .from('experiments')
+        .from('solutions')
         .insert({
-          solution_id: parentId,
-          title: 'New Experiment',
+          parent_solution_id: parentId,
+          title: 'New Sub-Solution',
           position_x: position.x,
           position_y: position.y,
-          status: 'planned',
           created_by: userId,
         })
         .select()
         .single();
       
       if (error) throw error;
-      return { id: data.id, type: 'experiment' as const, data };
+      return { id: data.id, type: 'solution' as const, data };
     }
   } catch (error) {
     console.error('Error creating child node:', error);
+    throw error;
+  }
+}
+
+export async function createExperiment(
+  solutionId: string,
+  userId: string,
+  position: { x: number; y: number }
+) {
+  try {
+    const { data, error } = await supabase
+      .from('experiments')
+      .insert({
+        solution_id: solutionId,
+        title: 'New Experiment',
+        position_x: position.x,
+        position_y: position.y,
+        status: 'planned',
+        created_by: userId,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { id: data.id, type: 'experiment' as const, data };
+  } catch (error) {
+    console.error('Error creating experiment:', error);
     throw error;
   }
 }

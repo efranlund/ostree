@@ -65,14 +65,8 @@ export default function TreeEditor({
     position: { x: number; y: number }
   ) => {
     try {
-      const childTypeMap: Record<string, 'outcome' | 'opportunity' | 'solution' | 'experiment'> = {
-        outcome: 'opportunity',
-        opportunity: 'solution',
-        solution: 'experiment',
-      };
-      
-      const childType = childTypeMap[parentType];
-      if (!childType || !canEdit) return;
+      // Solutions can now create sub-solutions (not just experiments)
+      if (!canEdit) return;
       
       await createChildNode(parentId, parentType as any, userId, position);
       router.refresh();
@@ -119,6 +113,7 @@ export default function TreeEditor({
           canEdit,
           userId,
           onAddChild: handleAddChild,
+          treeId: tree.id,
         },
       });
     });
@@ -137,6 +132,7 @@ export default function TreeEditor({
           canEdit,
           userId,
           onAddChild: handleAddChild,
+          treeId: tree.id,
         },
       });
       edges.push({
@@ -161,14 +157,27 @@ export default function TreeEditor({
           canEdit,
           userId,
           onAddChild: handleAddChild,
+          treeId: tree.id,
         },
       });
-      edges.push({
-        id: `e-${sol.opportunity_id}-${sol.id}`,
-        source: sol.opportunity_id,
-        target: sol.id,
-        type: 'smoothstep',
-      });
+      // Add edge from opportunity (for top-level solutions)
+      if (sol.opportunity_id) {
+        edges.push({
+          id: `e-${sol.opportunity_id}-${sol.id}`,
+          source: sol.opportunity_id,
+          target: sol.id,
+          type: 'smoothstep',
+        });
+      }
+      // Add edge from parent solution (for sub-solutions)
+      if (sol.parent_solution_id) {
+        edges.push({
+          id: `e-${sol.parent_solution_id}-${sol.id}`,
+          source: sol.parent_solution_id,
+          target: sol.id,
+          type: 'smoothstep',
+        });
+      }
     });
 
     // Add experiment nodes and edges
@@ -184,6 +193,7 @@ export default function TreeEditor({
           ...exp,
           canEdit,
           userId,
+          treeId: tree.id,
         },
       });
       edges.push({
@@ -222,9 +232,23 @@ export default function TreeEditor({
             .eq('id', params.target);
           if (error) throw error;
         } else if (sourceType === 'opportunity' && targetType === 'solution') {
+          // Connect solution to opportunity (top-level solution)
           const { error } = await supabase
             .from('solutions')
-            .update({ opportunity_id: params.source })
+            .update({ 
+              opportunity_id: params.source,
+              parent_solution_id: null 
+            })
+            .eq('id', params.target);
+          if (error) throw error;
+        } else if (sourceType === 'solution' && targetType === 'solution') {
+          // Connect solution to solution (sub-solution)
+          const { error } = await supabase
+            .from('solutions')
+            .update({ 
+              parent_solution_id: params.source,
+              opportunity_id: null 
+            })
             .eq('id', params.target);
           if (error) throw error;
         } else if (sourceType === 'solution' && targetType === 'experiment') {

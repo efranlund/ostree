@@ -29,6 +29,8 @@ export interface Opportunity extends TreeNode {
 
 export interface Solution extends TreeNode {
   type: 'solution';
+  opportunityId?: string | null;
+  parentSolutionId?: string | null;
   voteCount?: number;
   iceScore?: {
     impact: number;

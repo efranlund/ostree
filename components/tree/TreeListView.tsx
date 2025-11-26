@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Target, Lightbulb, Wrench, FlaskConical, ThumbsUp, Calendar, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, Target, Lightbulb, Wrench, FlaskConical, ThumbsUp, Calendar, TrendingUp, FileText, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import ICEScoreWidget from './ICEScoreWidget';
@@ -34,10 +34,11 @@ export default function TreeListView({
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [editing, setEditing] = useState<{ [key: string]: string }>({});
 
-  // Organize data hierarchically
+  // Organize data hierarchically with sub-solutions support
   const treeData = useMemo(() => {
     const oppsByOutcome: Record<string, any[]> = {};
     const solsByOpp: Record<string, any[]> = {};
+    const subSolsByParent: Record<string, any[]> = {};
     const expsBySol: Record<string, any[]> = {};
 
     opportunities.forEach((opp) => {
@@ -47,11 +48,21 @@ export default function TreeListView({
       oppsByOutcome[opp.outcome_id].push(opp);
     });
 
+    // Separate top-level solutions (with opportunity_id) from sub-solutions (with parent_solution_id)
     solutions.forEach((sol) => {
-      if (!solsByOpp[sol.opportunity_id]) {
-        solsByOpp[sol.opportunity_id] = [];
+      if (sol.opportunity_id) {
+        // Top-level solution
+        if (!solsByOpp[sol.opportunity_id]) {
+          solsByOpp[sol.opportunity_id] = [];
+        }
+        solsByOpp[sol.opportunity_id].push(sol);
+      } else if (sol.parent_solution_id) {
+        // Sub-solution
+        if (!subSolsByParent[sol.parent_solution_id]) {
+          subSolsByParent[sol.parent_solution_id] = [];
+        }
+        subSolsByParent[sol.parent_solution_id].push(sol);
       }
-      solsByOpp[sol.opportunity_id].push(sol);
     });
 
     experiments.forEach((exp) => {
@@ -61,14 +72,23 @@ export default function TreeListView({
       expsBySol[exp.solution_id].push(exp);
     });
 
+    // Recursive function to build solution tree with sub-solutions
+    const buildSolutionTree = (solution: any): any => {
+      const subSolutions = (subSolsByParent[solution.id] || []).map((subSol) => 
+        buildSolutionTree(subSol)
+      );
+      return {
+        ...solution,
+        subSolutions,
+        experiments: expsBySol[solution.id] || [],
+      };
+    };
+
     return outcomes.map((outcome) => ({
       outcome,
       opportunities: (oppsByOutcome[outcome.id] || []).map((opp) => ({
         ...opp,
-        solutions: (solsByOpp[opp.id] || []).map((sol) => ({
-          ...sol,
-          experiments: expsBySol[sol.id] || [],
-        })),
+        solutions: (solsByOpp[opp.id] || []).map((sol) => buildSolutionTree(sol)),
       })),
     }));
   }, [outcomes, opportunities, solutions, experiments]);
@@ -244,36 +264,59 @@ export default function TreeListView({
                                   </span>
                                 )}
                               </div>
-                              <div className="col-span-4 flex items-center space-x-1 text-xs">
-                                {canEdit ? (
-                                  <>
-                                    <input
-                                      type="date"
-                                      value={opp.start_date || ''}
-                                      onChange={(e) => handleSave('opportunities', opp.id, 'start_date', e.target.value || null)}
-                                      className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
-                                      placeholder="Start"
-                                    />
-                                    <span className="text-gray-400">→</span>
-                                    <input
-                                      type="date"
-                                      value={opp.end_date || ''}
-                                      onChange={(e) => handleSave('opportunities', opp.id, 'end_date', e.target.value || null)}
-                                      className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
-                                      placeholder="End"
-                                    />
-                                  </>
-                                ) : (
-                                  <span className="text-gray-600">
-                                    {opp.start_date || opp.end_date ? (
-                                      <>
-                                        {formatDate(opp.start_date)} → {formatDate(opp.end_date)}
-                                      </>
-                                    ) : (
-                                      '-'
-                                    )}
-                                  </span>
-                                )}
+                              <div className="col-span-4 flex items-center space-x-2 text-xs">
+                                <div className="flex items-center space-x-1">
+                                  {canEdit ? (
+                                    <>
+                                      <input
+                                        type="date"
+                                        value={opp.start_date || ''}
+                                        onChange={(e) => handleSave('opportunities', opp.id, 'start_date', e.target.value || null)}
+                                        className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
+                                        placeholder="Start"
+                                      />
+                                      <span className="text-gray-400">→</span>
+                                      <input
+                                        type="date"
+                                        value={opp.end_date || ''}
+                                        onChange={(e) => handleSave('opportunities', opp.id, 'end_date', e.target.value || null)}
+                                        className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
+                                        placeholder="End"
+                                      />
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-600">
+                                      {opp.start_date || opp.end_date ? (
+                                        <>
+                                          {formatDate(opp.start_date)} → {formatDate(opp.end_date)}
+                                        </>
+                                      ) : (
+                                        '-'
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 ml-auto">
+                                  <button
+                                    onClick={() => router.push(`/trees/${tree.id}/opportunity/${opp.id}`)}
+                                    className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="Edit Details"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" />
+                                  </button>
+                                  {opp.linear_ticket_url && (
+                                    <a
+                                      href={opp.linear_ticket_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                      title="Open in Linear"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -347,38 +390,230 @@ export default function TreeListView({
                                             </span>
                                           )}
                                         </div>
-                                        <div className="col-span-4 flex items-center space-x-1 text-xs">
-                                          {canEdit ? (
-                                            <>
-                                              <input
-                                                type="date"
-                                                value={sol.start_date || ''}
-                                                onChange={(e) => handleSave('solutions', sol.id, 'start_date', e.target.value || null)}
-                                                className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
-                                                placeholder="Start"
-                                              />
-                                              <span className="text-gray-400">→</span>
-                                              <input
-                                                type="date"
-                                                value={sol.end_date || ''}
-                                                onChange={(e) => handleSave('solutions', sol.id, 'end_date', e.target.value || null)}
-                                                className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
-                                                placeholder="End"
-                                              />
-                                            </>
-                                          ) : (
-                                            <span className="text-gray-600">
-                                              {sol.start_date || sol.end_date ? (
-                                                <>
-                                                  {formatDate(sol.start_date)} → {formatDate(sol.end_date)}
-                                                </>
-                                              ) : (
-                                                '-'
-                                              )}
-                                            </span>
-                                          )}
+                                        <div className="col-span-4 flex items-center space-x-2 text-xs">
+                                          <div className="flex items-center space-x-1">
+                                            {canEdit ? (
+                                              <>
+                                                <input
+                                                  type="date"
+                                                  value={sol.start_date || ''}
+                                                  onChange={(e) => handleSave('solutions', sol.id, 'start_date', e.target.value || null)}
+                                                  className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
+                                                  placeholder="Start"
+                                                />
+                                                <span className="text-gray-400">→</span>
+                                                <input
+                                                  type="date"
+                                                  value={sol.end_date || ''}
+                                                  onChange={(e) => handleSave('solutions', sol.id, 'end_date', e.target.value || null)}
+                                                  className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
+                                                  placeholder="End"
+                                                />
+                                              </>
+                                            ) : (
+                                              <span className="text-gray-600">
+                                                {sol.start_date || sol.end_date ? (
+                                                  <>
+                                                    {formatDate(sol.start_date)} → {formatDate(sol.end_date)}
+                                                  </>
+                                                ) : (
+                                                  '-'
+                                                )}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-1 ml-auto">
+                                            <button
+                                              onClick={() => router.push(`/trees/${tree.id}/solution/${sol.id}`)}
+                                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                              title="Edit Details"
+                                            >
+                                              <FileText className="w-3.5 h-3.5" />
+                                            </button>
+                                            {sol.linear_ticket_url && (
+                                              <a
+                                                href={sol.linear_ticket_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="p-1 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                                title="Open in Linear"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                <ExternalLink className="w-3.5 h-3.5" />
+                                              </a>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
+
+                                      {/* Sub-Solutions */}
+                                      {isSolExpanded && sol.subSolutions && sol.subSolutions.length > 0 && (
+                                        <div>
+                                          {sol.subSolutions.map((subSol: any) => {
+                                            const subSolKey = `subsol-${subSol.id}`;
+                                            const isSubSolExpanded = expanded[subSolKey];
+                                            
+                                            return (
+                                              <div key={subSol.id} className="border-t border-gray-100">
+                                                <div className="grid grid-cols-12 gap-2 px-3 py-2 items-center bg-green-50/20 text-sm" style={{ paddingLeft: '6rem' }}>
+                                                  <div className="col-span-1 flex justify-center">
+                                                    <button
+                                                      onClick={() => toggleExpanded(subSolKey)}
+                                                      className="text-green-600 hover:text-green-800"
+                                                    >
+                                                      {isSubSolExpanded ? (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                      ) : (
+                                                        <ChevronRight className="h-4 w-4" />
+                                                      )}
+                                                    </button>
+                                                  </div>
+                                                  <div className="col-span-1 flex items-center justify-center">
+                                                    <Wrench className="h-4 w-4 text-green-500" />
+                                                  </div>
+                                                  <div className="col-span-4">
+                                                    {editing[`solutions-${subSol.id}-title`] !== undefined ? (
+                                                      <input
+                                                        type="text"
+                                                        value={editing[`solutions-${subSol.id}-title`]}
+                                                        onChange={(e) => handleEdit(`solutions-${subSol.id}-title`, e.target.value)}
+                                                        onBlur={() => {
+                                                          const value = editing[`solutions-${subSol.id}-title`];
+                                                          if (value !== subSol.title) {
+                                                            handleSave('solutions', subSol.id, 'title', value);
+                                                          }
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                          if (e.key === 'Enter') {
+                                                            e.currentTarget.blur();
+                                                          }
+                                                        }}
+                                                        className="w-full px-2 py-0.5 text-sm border border-green-500 rounded"
+                                                        autoFocus
+                                                      />
+                                                    ) : (
+                                                      <span
+                                                        className="text-gray-900 cursor-text"
+                                                        onDoubleClick={() => canEdit && handleEdit(`solutions-${subSol.id}-title`, subSol.title)}
+                                                      >
+                                                        {subSol.title}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className="col-span-2 flex items-center space-x-2 text-xs">
+                                                    <ICEScoreWidget
+                                                      solutionId={subSol.id}
+                                                      initialImpact={subSol.ice_impact}
+                                                      initialConfidence={subSol.ice_confidence}
+                                                      initialEase={subSol.ice_ease}
+                                                      canEdit={canEdit}
+                                                      compact={true}
+                                                    />
+                                                    {subSol.voteCount > 0 && (
+                                                      <span className="flex items-center text-gray-600">
+                                                        <ThumbsUp className="h-3 w-3 mr-1" />
+                                                        {subSol.voteCount}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className="col-span-4 flex items-center space-x-2 text-xs">
+                                                    <div className="flex items-center space-x-1">
+                                                      {canEdit ? (
+                                                        <>
+                                                          <input
+                                                            type="date"
+                                                            value={subSol.start_date || ''}
+                                                            onChange={(e) => handleSave('solutions', subSol.id, 'start_date', e.target.value || null)}
+                                                            className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
+                                                            placeholder="Start"
+                                                          />
+                                                          <span className="text-gray-400">→</span>
+                                                          <input
+                                                            type="date"
+                                                            value={subSol.end_date || ''}
+                                                            onChange={(e) => handleSave('solutions', subSol.id, 'end_date', e.target.value || null)}
+                                                            className="text-xs border border-gray-300 rounded px-1 py-0.5 w-28"
+                                                            placeholder="End"
+                                                          />
+                                                        </>
+                                                      ) : (
+                                                        <span className="text-gray-600">
+                                                          {subSol.start_date || subSol.end_date ? (
+                                                            <>
+                                                              {formatDate(subSol.start_date)} → {formatDate(subSol.end_date)}
+                                                            </>
+                                                          ) : (
+                                                            '-'
+                                                          )}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1 ml-auto">
+                                                      <button
+                                                        onClick={() => router.push(`/trees/${tree.id}/solution/${subSol.id}`)}
+                                                        className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                        title="Edit Details"
+                                                      >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                      </button>
+                                                      {subSol.linear_ticket_url && (
+                                                        <a
+                                                          href={subSol.linear_ticket_url}
+                                                          target="_blank"
+                                                          rel="noopener noreferrer"
+                                                          className="p-1 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                                          title="Open in Linear"
+                                                          onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                          <ExternalLink className="w-3.5 h-3.5" />
+                                                        </a>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                                
+                                                {/* Recursively render nested sub-solutions */}
+                                                {isSubSolExpanded && subSol.subSolutions && subSol.subSolutions.length > 0 && (
+                                                  <div>
+                                                    {subSol.subSolutions.map((nestedSubSol: any) => (
+                                                      <div key={nestedSubSol.id} className="border-t border-gray-100">
+                                                        <div className="grid grid-cols-12 gap-2 px-3 py-2 items-center bg-green-50/10 text-sm" style={{ paddingLeft: '8rem' }}>
+                                                          <div className="col-span-1"></div>
+                                                          <div className="col-span-1 flex items-center justify-center">
+                                                            <Wrench className="h-4 w-4 text-green-400" />
+                                                          </div>
+                                                          <div className="col-span-4">
+                                                            <span className="text-gray-900">{nestedSubSol.title}</span>
+                                                          </div>
+                                                          <div className="col-span-2 flex items-center space-x-2 text-xs">
+                                                            <ICEScoreWidget
+                                                              solutionId={nestedSubSol.id}
+                                                              initialImpact={nestedSubSol.ice_impact}
+                                                              initialConfidence={nestedSubSol.ice_confidence}
+                                                              initialEase={nestedSubSol.ice_ease}
+                                                              canEdit={canEdit}
+                                                              compact={true}
+                                                            />
+                                                          </div>
+                                                          <div className="col-span-4 flex items-center gap-1 ml-auto">
+                                                            <button
+                                                              onClick={() => router.push(`/trees/${tree.id}/solution/${nestedSubSol.id}`)}
+                                                              className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                              title="Edit Details"
+                                                            >
+                                                              <FileText className="w-3.5 h-3.5" />
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
 
                                       {/* Experiments */}
                                       {isSolExpanded && (
@@ -429,14 +664,37 @@ export default function TreeListView({
                                                     {exp.status}
                                                   </span>
                                                 </div>
-                                                <div className="col-span-4 text-xs text-gray-600">
-                                                  {exp.start_date || exp.end_date ? (
-                                                    <span>
-                                                      {formatDate(exp.start_date)} → {formatDate(exp.end_date)}
-                                                    </span>
-                                                  ) : (
-                                                    '-'
-                                                  )}
+                                                <div className="col-span-4 flex items-center space-x-2 text-xs">
+                                                  <div className="text-gray-600">
+                                                    {exp.start_date || exp.end_date ? (
+                                                      <span>
+                                                        {formatDate(exp.start_date)} → {formatDate(exp.end_date)}
+                                                      </span>
+                                                    ) : (
+                                                      '-'
+                                                    )}
+                                                  </div>
+                                                  <div className="flex items-center gap-1 ml-auto">
+                                                    <button
+                                                      onClick={() => router.push(`/trees/${tree.id}/experiment/${exp.id}`)}
+                                                      className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                      title="Edit Details"
+                                                    >
+                                                      <FileText className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    {exp.linear_ticket_url && (
+                                                      <a
+                                                        href={exp.linear_ticket_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                                                        title="Open in Linear"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                      >
+                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                      </a>
+                                                    )}
+                                                  </div>
                                                 </div>
                                               </div>
                                             </div>

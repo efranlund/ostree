@@ -2,6 +2,9 @@
 
 import { memo, useState, useCallback, useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
+import { useRouter } from 'next/navigation';
+import { MoreVertical, ExternalLink, FileText, Trash2 } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { supabase } from '@/lib/supabase/client';
 import { debounce } from '@/lib/utils/debounce';
 import { createChildNode } from '@/lib/utils/nodeOperations';
@@ -17,6 +20,8 @@ interface BaseNodeProps extends NodeProps {
     description?: string;
     canEdit?: boolean;
     userId?: string;
+    treeId?: string;
+    linear_ticket_url?: string | null;
     onAddChild?: (parentId: string, parentType: string, position: { x: number; y: number }) => void;
     [key: string]: any;
   };
@@ -27,6 +32,7 @@ interface BaseNodeProps extends NodeProps {
 }
 
 function BaseNode({ data, nodeType, color, icon, tableName, xPos, yPos }: BaseNodeProps) {
+  const router = useRouter();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [title, setTitle] = useState(data.title);
@@ -94,6 +100,36 @@ function BaseNode({ data, nodeType, color, icon, tableName, xPos, yPos }: BaseNo
     }
   };
 
+  const handleEditDetails = () => {
+    if (data.treeId && nodeType !== 'outcome') {
+      router.push(`/trees/${data.treeId}/${nodeType}/${data.id}`);
+    }
+  };
+
+  const handleOpenLinear = () => {
+    if (data.linear_ticket_url) {
+      window.open(data.linear_ticket_url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete this ${nodeType}?`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', data.id);
+      
+      if (error) throw error;
+      router.refresh();
+    } catch (error) {
+      console.error('Error deleting node:', error);
+      alert('Failed to delete node');
+    }
+  };
+
   return (
     <div
       className="rounded-lg shadow-lg border-2 min-w-[200px] max-w-[300px]"
@@ -107,23 +143,73 @@ function BaseNode({ data, nodeType, color, icon, tableName, xPos, yPos }: BaseNo
           {icon}
           <span className="uppercase">{nodeType}</span>
         </div>
-        {data.canEdit && nodeType !== 'experiment' && (
-          <button
-            className="text-white hover:bg-white/20 rounded px-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (data.onAddChild) {
-                data.onAddChild(data.id, nodeType, {
-                  x: (xPos || 0) + 50,
-                  y: (yPos || 0) + 200,
-                });
-              }
-            }}
-            title="Add child"
-          >
-            +
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {data.canEdit && nodeType !== 'experiment' && (
+            <button
+              className="text-white hover:bg-white/20 rounded px-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (data.onAddChild) {
+                  data.onAddChild(data.id, nodeType, {
+                    x: (xPos || 0) + 50,
+                    y: (yPos || 0) + 200,
+                  });
+                }
+              }}
+              title="Add child"
+            >
+              +
+            </button>
+          )}
+          {nodeType !== 'outcome' && (
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button
+                  className="text-white hover:bg-white/20 rounded px-1"
+                  onClick={(e) => e.stopPropagation()}
+                  title="More options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  className="min-w-[180px] bg-white rounded-md shadow-lg border border-gray-200 p-1 z-50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DropdownMenu.Item
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer outline-none"
+                    onSelect={handleEditDetails}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Edit Details
+                  </DropdownMenu.Item>
+                  {data.linear_ticket_url && (
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer outline-none"
+                      onSelect={handleOpenLinear}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open in Linear
+                    </DropdownMenu.Item>
+                  )}
+                  {data.canEdit && (
+                    <DropdownMenu.Separator className="h-px bg-gray-200 my-1" />
+                  )}
+                  {data.canEdit && (
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded cursor-pointer outline-none"
+                      onSelect={handleDelete}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </DropdownMenu.Item>
+                  )}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          )}
+        </div>
       </div>
       <div className="bg-white px-4 py-3 rounded-b-lg">
         {isEditingTitle && data.canEdit ? (

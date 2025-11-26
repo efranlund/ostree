@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "trees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "activity_log_user_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       comments: {
@@ -126,10 +133,14 @@ export type Database = {
           created_at: string | null
           created_by: string
           description: string | null
+          details: string | null
           end_date: string | null
           external_link: string | null
+          fail_condition: string | null
+          hypothesis: string | null
           id: string
           learnings: string | null
+          linear_ticket_url: string | null
           position_x: number | null
           position_y: number | null
           solution_id: string
@@ -145,10 +156,14 @@ export type Database = {
           created_at?: string | null
           created_by: string
           description?: string | null
+          details?: string | null
           end_date?: string | null
           external_link?: string | null
+          fail_condition?: string | null
+          hypothesis?: string | null
           id?: string
           learnings?: string | null
+          linear_ticket_url?: string | null
           position_x?: number | null
           position_y?: number | null
           solution_id: string
@@ -164,10 +179,14 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           description?: string | null
+          details?: string | null
           end_date?: string | null
           external_link?: string | null
+          fail_condition?: string | null
+          hypothesis?: string | null
           id?: string
           learnings?: string | null
+          linear_ticket_url?: string | null
           position_x?: number | null
           position_y?: number | null
           solution_id?: string
@@ -195,11 +214,15 @@ export type Database = {
           created_at: string | null
           created_by: string
           description: string | null
+          desired_outcome: string | null
+          details: string | null
           end_date: string | null
           id: string
+          linear_ticket_url: string | null
           outcome_id: string
           position_x: number | null
           position_y: number | null
+          problem_statement: string | null
           start_date: string | null
           target_date: string | null
           title: string
@@ -210,11 +233,15 @@ export type Database = {
           created_at?: string | null
           created_by: string
           description?: string | null
+          desired_outcome?: string | null
+          details?: string | null
           end_date?: string | null
           id?: string
+          linear_ticket_url?: string | null
           outcome_id: string
           position_x?: number | null
           position_y?: number | null
+          problem_statement?: string | null
           start_date?: string | null
           target_date?: string | null
           title: string
@@ -225,11 +252,15 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           description?: string | null
+          desired_outcome?: string | null
+          details?: string | null
           end_date?: string | null
           id?: string
+          linear_ticket_url?: string | null
           outcome_id?: string
           position_x?: number | null
           position_y?: number | null
+          problem_statement?: string | null
           start_date?: string | null
           target_date?: string | null
           title?: string
@@ -291,51 +322,69 @@ export type Database = {
       }
       solutions: {
         Row: {
+          assumptions: string | null
+          constraints: string | null
           created_at: string | null
           created_by: string
           description: string | null
+          details: string | null
           end_date: string | null
           ice_confidence: number | null
           ice_ease: number | null
           ice_impact: number | null
           id: string
-          opportunity_id: string
+          linear_ticket_url: string | null
+          opportunity_id: string | null
+          parent_solution_id: string | null
           position_x: number | null
           position_y: number | null
+          risks: string | null
           start_date: string | null
           target_date: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          assumptions?: string | null
+          constraints?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
+          details?: string | null
           end_date?: string | null
           ice_confidence?: number | null
           ice_ease?: number | null
           ice_impact?: number | null
           id?: string
-          opportunity_id: string
+          linear_ticket_url?: string | null
+          opportunity_id?: string | null
+          parent_solution_id?: string | null
           position_x?: number | null
           position_y?: number | null
+          risks?: string | null
           start_date?: string | null
           target_date?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          assumptions?: string | null
+          constraints?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
+          details?: string | null
           end_date?: string | null
           ice_confidence?: number | null
           ice_ease?: number | null
           ice_impact?: number | null
           id?: string
-          opportunity_id?: string
+          linear_ticket_url?: string | null
+          opportunity_id?: string | null
+          parent_solution_id?: string | null
           position_x?: number | null
           position_y?: number | null
+          risks?: string | null
           start_date?: string | null
           target_date?: string | null
           title?: string
@@ -347,6 +396,13 @@ export type Database = {
             columns: ["opportunity_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solutions_parent_solution_id_fkey"
+            columns: ["parent_solution_id"]
+            isOneToOne: false
+            referencedRelation: "solutions"
             referencedColumns: ["id"]
           },
         ]
@@ -481,6 +537,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_solution_root_opportunity_id: {
+        Args: { solution_id: string }
+        Returns: string
+      }
+      is_tree_public_or_creator: {
+        Args: { _tree_id: string }
+        Returns: boolean
+      }
       log_activity: {
         Args: {
           p_action: string

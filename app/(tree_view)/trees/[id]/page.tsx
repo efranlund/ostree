@@ -90,13 +90,46 @@ export default async function TreePage({
     voteCount: voteCountsByNodeId[opp.id] || 0,
   })) || [];
 
-  const { data: solutions } = opportunityIds.length > 0
+  // Fetch all solutions (both top-level and sub-solutions)
+  // First get top-level solutions
+  const { data: topLevelSolutions } = opportunityIds.length > 0
     ? await supabase
         .from('solutions')
         .select('*')
         .in('opportunity_id', opportunityIds)
         .order('created_at', { ascending: true })
     : { data: [] };
+
+  // Get all solution IDs to find sub-solutions
+  const topLevelSolutionIds = topLevelSolutions?.map((s) => s.id) || [];
+  
+  // Fetch first level of sub-solutions
+  const { data: firstLevelSubSolutions } = topLevelSolutionIds.length > 0
+    ? await supabase
+        .from('solutions')
+        .select('*')
+        .in('parent_solution_id', topLevelSolutionIds)
+        .order('created_at', { ascending: true })
+    : { data: [] };
+
+  // Get IDs of first-level sub-solutions to find nested ones
+  const firstLevelSubSolutionIds = firstLevelSubSolutions?.map((s) => s.id) || [];
+  
+  // Fetch second level of sub-solutions (nested sub-solutions)
+  const { data: secondLevelSubSolutions } = firstLevelSubSolutionIds.length > 0
+    ? await supabase
+        .from('solutions')
+        .select('*')
+        .in('parent_solution_id', firstLevelSubSolutionIds)
+        .order('created_at', { ascending: true })
+    : { data: [] };
+
+  // Combine all solutions (supporting up to 3 levels deep)
+  const solutions = [
+    ...(topLevelSolutions || []),
+    ...(firstLevelSubSolutions || []),
+    ...(secondLevelSubSolutions || []),
+  ];
 
   const solutionIds = solutions?.map((s) => s.id) || [];
 
@@ -119,11 +152,13 @@ export default async function TreePage({
     voteCount: solVoteCountsByNodeId[sol.id] || 0,
   })) || [];
 
-  const { data: experiments } = solutionIds.length > 0
+  // Experiments can be attached to any solution (including sub-solutions)
+  const allSolutionIds = solutions.map((s) => s.id);
+  const { data: experiments } = allSolutionIds.length > 0
     ? await supabase
         .from('experiments')
         .select('*')
-        .in('solution_id', solutionIds)
+        .in('solution_id', allSolutionIds)
         .order('created_at', { ascending: true })
     : { data: [] };
 
