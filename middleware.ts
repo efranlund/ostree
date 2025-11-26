@@ -1,7 +1,24 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Timeout wrapper to prevent middleware from hanging
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T | null> {
+  const timeout = new Promise<null>((resolve) =>
+    setTimeout(() => resolve(null), timeoutMs)
+  );
+  return Promise.race([promise, timeout]);
+}
+
 export async function middleware(request: NextRequest) {
+  // Validate environment variables
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase environment variables');
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -31,9 +48,27 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+
+  try {
+    // Add 10-second timeout to prevent hanging
+    const result = await withTimeout(
+      supabase.auth.getUser(),
+      10000
+    );
+
+    if (result) {
+      user = result.data.user;
+    } else {
+      console.error('Supabase getUser() timed out after 10 seconds');
+      // Allow request to proceed without auth check
+      return response;
+    }
+  } catch (error) {
+    console.error('Error in middleware auth check:', error);
+    // Allow request to proceed without auth check on error
+    return response;
+  }
 
   // Protect dashboard routes
   if (request.nextUrl.pathname.startsWith('/trees') && !user) {
@@ -50,7 +85,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Only run middleware on specific routes
+    '/',
+    '/trees/:path*',
+    '/login',
+    '/signup',
   ],
 };
 
