@@ -25,27 +25,6 @@ export default function VotingWidget({
 
   useEffect(() => {
     loadVotes();
-
-    // Subscribe to vote changes
-    const subscription = supabase
-      .channel(`votes-${nodeId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'votes',
-          filter: `node_id=eq.${nodeId}`,
-        },
-        () => {
-          loadVotes();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
   }, [nodeId]);
 
   const loadVotes = async () => {

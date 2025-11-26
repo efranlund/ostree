@@ -25,27 +25,6 @@ export default function ActivityFeed({ treeId }: { treeId: string }) {
 
   useEffect(() => {
     loadActivities();
-
-    // Subscribe to new activities
-    const subscription = supabase
-      .channel(`activity-${treeId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'activity_log',
-          filter: `tree_id=eq.${treeId}`,
-        },
-        () => {
-          loadActivities();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
   }, [treeId]);
 
   const loadActivities = async () => {

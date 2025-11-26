@@ -23,7 +23,6 @@ import ExperimentNode from './nodes/ExperimentNode';
 import { supabase } from '@/lib/supabase/client';
 import { createChildNode, createOutcome } from '@/lib/utils/nodeOperations';
 import { useRouter } from 'next/navigation';
-import PresenceIndicator from './PresenceIndicator';
 import ExportMenu from './ExportMenu';
 import { Target } from 'lucide-react';
 
@@ -300,91 +299,6 @@ export default function TreeEditor({
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-  // Set up real-time subscriptions
-  useEffect(() => {
-    const subscriptions: any[] = [];
-
-    // Subscribe to outcomes changes
-    const outcomesSub = supabase
-      .channel('outcomes-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'outcomes',
-          filter: `tree_id=eq.${tree.id}`,
-        },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    subscriptions.push(outcomesSub);
-
-    // Subscribe to opportunities changes
-    const opportunitiesSub = supabase
-      .channel('opportunities-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'opportunities',
-        },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    subscriptions.push(opportunitiesSub);
-
-    // Subscribe to solutions changes
-    const solutionsSub = supabase
-      .channel('solutions-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'solutions',
-        },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    subscriptions.push(solutionsSub);
-
-    // Subscribe to experiments changes
-    const experimentsSub = supabase
-      .channel('experiments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'experiments',
-        },
-        () => {
-          router.refresh();
-        }
-      )
-      .subscribe();
-
-    subscriptions.push(experimentsSub);
-
-    // Cleanup subscriptions
-    return () => {
-      subscriptions.forEach((sub) => {
-        supabase.removeChannel(sub);
-      });
-    };
-  }, [tree.id, router]);
-
   return (
     <div className="w-full h-full bg-white relative flex flex-col">
       <div className="p-4 border-b border-gray-200 flex items-start justify-between flex-none">
@@ -446,7 +360,6 @@ export default function TreeEditor({
         </div>
       </div>
       <div className="flex-1 relative">
-        <PresenceIndicator treeId={tree.id} />
         <ReactFlow
           nodes={nodes}
           edges={edges}
