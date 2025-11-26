@@ -18,7 +18,12 @@ export default function SignupForm() {
     setSuccess(false);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      // Add timeout to prevent hanging if Supabase is unreachable
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out. Please check your internet connection and try again.')), 10000)
+      );
+
+      const signInPromise = supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${getSiteUrl()}/auth/callback`,
@@ -28,11 +33,13 @@ export default function SignupForm() {
         },
       });
 
+      const { error } = await Promise.race([signInPromise, timeoutPromise]);
+
       if (error) throw error;
 
       setSuccess(true);
     } catch (error: any) {
-      setError(error.message || 'An error occurred');
+      setError(error.message || 'An error occurred. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
