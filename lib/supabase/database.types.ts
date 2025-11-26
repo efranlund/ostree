@@ -195,10 +195,13 @@ export type Database = {
           created_at: string | null
           created_by: string
           description: string | null
+          end_date: string | null
           id: string
           outcome_id: string
           position_x: number | null
           position_y: number | null
+          start_date: string | null
+          target_date: string | null
           title: string
           updated_at: string | null
         }
@@ -207,10 +210,13 @@ export type Database = {
           created_at?: string | null
           created_by: string
           description?: string | null
+          end_date?: string | null
           id?: string
           outcome_id: string
           position_x?: number | null
           position_y?: number | null
+          start_date?: string | null
+          target_date?: string | null
           title: string
           updated_at?: string | null
         }
@@ -219,10 +225,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           description?: string | null
+          end_date?: string | null
           id?: string
           outcome_id?: string
           position_x?: number | null
           position_y?: number | null
+          start_date?: string | null
+          target_date?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -285,6 +294,7 @@ export type Database = {
           created_at: string | null
           created_by: string
           description: string | null
+          end_date: string | null
           ice_confidence: number | null
           ice_ease: number | null
           ice_impact: number | null
@@ -292,6 +302,8 @@ export type Database = {
           opportunity_id: string
           position_x: number | null
           position_y: number | null
+          start_date: string | null
+          target_date: string | null
           title: string
           updated_at: string | null
         }
@@ -299,6 +311,7 @@ export type Database = {
           created_at?: string | null
           created_by: string
           description?: string | null
+          end_date?: string | null
           ice_confidence?: number | null
           ice_ease?: number | null
           ice_impact?: number | null
@@ -306,6 +319,8 @@ export type Database = {
           opportunity_id: string
           position_x?: number | null
           position_y?: number | null
+          start_date?: string | null
+          target_date?: string | null
           title: string
           updated_at?: string | null
         }
@@ -313,6 +328,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string
           description?: string | null
+          end_date?: string | null
           ice_confidence?: number | null
           ice_ease?: number | null
           ice_impact?: number | null
@@ -320,6 +336,8 @@ export type Database = {
           opportunity_id?: string
           position_x?: number | null
           position_y?: number | null
+          start_date?: string | null
+          target_date?: string | null
           title?: string
           updated_at?: string | null
         }

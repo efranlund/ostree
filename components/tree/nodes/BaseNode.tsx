@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { debounce } from '@/lib/utils/debounce';
 import { createChildNode } from '@/lib/utils/nodeOperations';
 import VotingWidget from '../VotingWidget';
+import ICEScoreWidget from '../ICEScoreWidget';
 
 type TableName = 'outcomes' | 'opportunities' | 'solutions' | 'experiments';
 
@@ -188,6 +189,16 @@ function BaseNode({ data, nodeType, color, icon, tableName, xPos, yPos }: BaseNo
             nodeId={data.id}
             nodeType={nodeType}
             initialVoteCount={data.voteCount}
+          />
+        )}
+        {nodeType === 'solution' && (
+          <ICEScoreWidget
+            solutionId={data.id}
+            initialImpact={data.ice_impact}
+            initialConfidence={data.ice_confidence}
+            initialEase={data.ice_ease}
+            canEdit={data.canEdit}
+            compact={true}
           />
         )}
       </div>

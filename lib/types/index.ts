@@ -23,6 +23,8 @@ export interface Opportunity extends TreeNode {
   evidenceCount?: number;
   voteCount?: number;
   confidenceLevel?: number;
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface Solution extends TreeNode {
@@ -33,6 +35,8 @@ export interface Solution extends TreeNode {
     confidence: number;
     ease: number;
   };
+  startDate?: string | null;
+  endDate?: string | null;
 }
 
 export interface Experiment extends TreeNode {
